@@ -44,7 +44,7 @@ When changing scope or safety rules:
 
 1. Update this file first.
 2. Sync `.github/copilot-instructions.md` for GitHub Copilot.
-3. Sync `.cursor/rules/mvp-scope.mdc` for Cursor.
+3. Sync `.cursor/rules/product-scope.mdc` for Cursor.
 4. Sync path-scoped mirrors if the rule applies to a specific area:
    - `src/**/*` → `.github/instructions/frontend.instructions.md` + `.cursor/rules/frontend.mdc`
    - `worlds/**/*` → `.github/instructions/world-content.instructions.md` + `.cursor/rules/world-content.mdc`
