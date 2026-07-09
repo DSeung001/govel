@@ -1,17 +1,15 @@
 ---
-description: Govel MVP scope, architecture, safety, and UI rules
+description: Govel scope, architecture, safety, and UI rules
 alwaysApply: true
 ---
 
-# Govel MVP Scope
+# Govel Product Scope
 
-Canonical sources: [AGENTS.md](AGENTS.md), [mvp-non-goals.md](mvp-non-goals.md), [.github/copilot-instructions.md](.github/copilot-instructions.md)
+Canonical sources: [AGENTS.md](AGENTS.md), [.github/copilot-instructions.md](.github/copilot-instructions.md)
 
 ## Goal
 
 World → Proposal → AI Review → Approve → Markdown Update → Publish
-
-Do not expand scope beyond the MVP. See [mvp-non-goals.md](mvp-non-goals.md) for the full do-not-add list.
 
 ## Core Rules
 

@@ -87,4 +87,3 @@ Each approved proposal adds one entry:
 ## Reference
 
 - [.github/instructions/world-content.instructions.md](../../.github/instructions/world-content.instructions.md)
-- [govel_mvp_plan.md](../../govel_mvp_plan.md) sections 11, 12

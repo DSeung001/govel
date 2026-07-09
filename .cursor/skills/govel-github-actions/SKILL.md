@@ -67,5 +67,3 @@ On `/reject` comment:
 ## Reference
 
 - [AGENTS.md](../../AGENTS.md)
-- [mvp-non-goals.md](../../mvp-non-goals.md)
-- [govel_mvp_plan.md](../../govel_mvp_plan.md) sections 8.5, 8.6, 14, 17

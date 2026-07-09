@@ -14,7 +14,7 @@ applyTo: "src/**/*.{ts,tsx,css,mdx}"
 - Avoid client-side complexity unless required.
 - Use grayscale only. No complex animations. Buttons are simple rectangular controls.
 
-## Main Page (§8.1)
+## Main Page
 
 Purpose: show the list of published worlds.
 
@@ -36,7 +36,7 @@ Each world card shows:
 - Last updated date
 - `[세계관 보기]` button
 
-## World Home (§8.2)
+## World Home
 
 Purpose: first impression; lead to read, propose, or download.
 
@@ -57,7 +57,7 @@ Buttons:
 - `[설정 제안하기]` — links to GitHub Issue Form URL (no custom proposal page in MVP)
 - `[AI용 Markdown 다운로드]` — links to `worlds/{world_id}/export.md`
 
-## World Wiki (§8.3)
+## World Wiki
 
 Purpose: render approved canonical lore only.
 

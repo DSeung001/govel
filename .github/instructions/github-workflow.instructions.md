@@ -13,7 +13,7 @@ applyTo: ".github/workflows/*.yml,.github/ISSUE_TEMPLATE/*.yml"
 - Never let AI-generated patches modify system files.
 - Store AI API keys in GitHub Secrets only.
 
-## Issue Form — lore-proposal.yml (§8.4)
+## Issue Form — lore-proposal.yml
 
 Fields:
 
@@ -28,7 +28,7 @@ Type options: Character, Location, Faction, Rule, Event, Item, Other
 
 MVP does not use a custom proposal page. The `[설정 제안하기]` button links to this Issue Form.
 
-## AI Review — ai-review.yml (§8.5)
+## AI Review — ai-review.yml
 
 Trigger: lore proposal issue opened.
 
@@ -66,7 +66,7 @@ Comment format:
 
 Do not auto-approve. Do not modify world files in this workflow.
 
-## Approval — approve-proposal.yml (§8.6, §14)
+## Approval — approve-proposal.yml
 
 Commands: `/approve`, `/reject`
 
@@ -87,7 +87,7 @@ On `/reject`:
 2. Comment rejection acknowledgment
 3. Close the issue without modifying world files
 
-## Pages Deploy — build-pages.yml (§17.1)
+## Pages Deploy — build-pages.yml
 
 Trigger: push to default branch.
 

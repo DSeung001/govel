@@ -12,7 +12,7 @@ applyTo: "worlds/**/*.md,worlds/**/*.json"
 - Do not invent complex schemas unless required.
 - `export.md` must be optimized for AI context.
 
-## World Folder Structure (§9)
+## World Folder Structure
 
 Each world lives at `worlds/{world_id}/`:
 
@@ -29,7 +29,7 @@ rules/
 events/
 ```
 
-## world.json Fields (§10)
+## world.json Fields
 
 - `id` — world slug (e.g. `black-sun`)
 - `title` — display name
@@ -39,7 +39,7 @@ events/
 - `status` — e.g. `open`
 - `createdAt`, `updatedAt` — ISO date strings
 
-## Lore Document Sections (§11)
+## Lore Document Sections
 
 Use entity-appropriate sections. Common patterns:
 
@@ -51,7 +51,7 @@ Use entity-appropriate sections. Common patterns:
 
 `index.md` includes world intro, core settings, and links to major categories.
 
-## export.md Structure (§12)
+## export.md Structure
 
 Path: `worlds/{world_id}/export.md`
 
