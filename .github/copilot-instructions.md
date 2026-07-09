@@ -8,8 +8,6 @@ The MVP goal is:
 
 World → Proposal → AI Review → Approve → Markdown Update → Publish
 
-Do not expand scope beyond the MVP.
-
 ## Core Rules
 
 - Keep the UI minimal, grayscale, and notepad-like.
