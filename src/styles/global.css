@@ -1,0 +1,110 @@
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --text: #111111;
+  --subtext: #666666;
+  --border: #e5e5e5;
+  --muted: #f5f5f5;
+  --accent: #222222;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+}
+
+a {
+  color: var(--accent);
+}
+
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.header {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.muted {
+  color: var(--subtext);
+}
+
+.card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.button {
+  display: inline-block;
+  border: 1px solid var(--accent);
+  background: var(--muted);
+  color: var(--text);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 0;
+}
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+}
+
+.sidebar {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 10px;
+}
+
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar li + li {
+  margin-top: 4px;
+}
+
+.content {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.meta-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.meta-box {
+  border: 1px solid var(--border);
+  background: var(--muted);
+  padding: 8px;
+}

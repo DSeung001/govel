@@ -17,60 +17,180 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Parse issue body
+      - name: Parse issue form
         id: parse
-        run: |
-          # TODO: extract World, Type, Proposal Title, Proposal Content from issue form body
-          echo "world_id=unknown" >> "$GITHUB_OUTPUT"
-          echo "proposal_type=Other" >> "$GITHUB_OUTPUT"
-
-      - name: Load world context
-        run: |
-          WORLD_ID="${{ steps.parse.outputs.world_id }}"
-          if [ -f "worlds/${WORLD_ID}/world.json" ]; then
-            cat "worlds/${WORLD_ID}/world.json"
-          else
-            echo "World not found: worlds/${WORLD_ID}/"
-            exit 1
-          fi
-
-      - name: Call AI provider
-        env:
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-        run: |
-          # TODO: call AI API — classify, summarize, conflict check, list target files
-          # See .github/instructions/github-workflow.instructions.md §8.5
-          if [ -z "$AI_API_KEY" ]; then
-            echo "AI_API_KEY secret not configured"
-            exit 1
-          fi
-          echo "AI review placeholder — implement provider call"
-
-      - name: Post AI review comment
         uses: actions/github-script@v7
         with:
           script: |
-            const body = [
-              "## AI Review",
-              "",
-              "분류: (pending)",
-              "",
-              "이름: (pending)",
-              "",
-              "요약:",
-              "(pending)",
-              "",
-              "충돌 검사:",
-              "(pending)",
-              "",
-              "변경 예정 파일:",
-              "- (pending)",
-              "",
-              "관리자 명령:",
-              "- /approve",
-              "- /reject",
-            ].join("\n");
+            const body = context.payload.issue.body ?? "";
+            const valueOf = (label) => {
+              const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              const regex = new RegExp(`###\\s*${escaped}\\s*\\n([\\s\\S]*?)(?=\\n###\\s|$)`, "i");
+              const match = body.match(regex);
+              return match ? match[1].trim() : "";
+            };
+            const worldId = valueOf("World").split(/\s+/)[0];
+            const proposalType = valueOf("Type") || "Other";
+            const proposalTitle = valueOf("Proposal Title") || context.payload.issue.title;
+            const proposalContent = valueOf("Proposal Content") || "";
+            if (!worldId) {
+              core.setFailed("World field is missing in lore proposal issue form.");
+              return;
+            }
+            core.setOutput("world_id", worldId);
+            core.setOutput("proposal_type", proposalType);
+            core.setOutput("proposal_title", proposalTitle);
+            core.setOutput("proposal_content", proposalContent);
 
+      - name: Load world context
+        id: context
+        run: |
+          WORLD_ID="${{ steps.parse.outputs.world_id }}"
+          WORLD_DIR="worlds/${WORLD_ID}"
+          if [ ! -f "${WORLD_DIR}/world.json" ]; then
+            echo "World not found: ${WORLD_DIR}"
+            exit 1
+          fi
+          {
+            echo "WORLD_ID=${WORLD_ID}"
+            echo "WORLD_DIR=${WORLD_DIR}"
+          } >> "$GITHUB_ENV"
+
+          {
+            echo "CONTEXT<<EOF"
+            echo "## world.json"
+            cat "${WORLD_DIR}/world.json"
+            echo
+            for section in index.md summary.md export.md changelog.md; do
+              if [ -f "${WORLD_DIR}/${section}" ]; then
+                echo "## ${section}"
+                cat "${WORLD_DIR}/${section}"
+                echo
+              fi
+            done
+            for dir in characters locations factions rules events; do
+              if [ -d "${WORLD_DIR}/${dir}" ]; then
+                for file in "${WORLD_DIR}/${dir}"/*.md; do
+                  if [ -f "$file" ]; then
+                    echo "## ${file#${WORLD_DIR}/}"
+                    cat "$file"
+                    echo
+                  fi
+                done
+              fi
+            done
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Generate AI review with Gemini
+        id: gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PROPOSAL_TYPE: ${{ steps.parse.outputs.proposal_type }}
+          PROPOSAL_TITLE: ${{ steps.parse.outputs.proposal_title }}
+          PROPOSAL_CONTENT: ${{ steps.parse.outputs.proposal_content }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY secret not configured"
+            exit 1
+          fi
+          echo "::add-mask::$GEMINI_API_KEY"
+
+          PROMPT_FILE=$(mktemp)
+          cat > "$PROMPT_FILE" <<'EOF'
+You are reviewing a lore proposal for Govel MVP.
+Return Korean Markdown exactly in this format:
+
+## AI Review
+
+분류: {Type}
+
+이름: {Proposal Title}
+
+요약:
+{short summary}
+
+충돌 검사:
+{conflict result}
+
+변경 예정 파일:
+- worlds/{world_id}/...
+
+관리자 명령:
+- /approve
+- /reject
+
+그리고 마지막에 반드시 아래 주석 블록을 포함하세요.
+<!-- GOVEL_DRAFT_START
+{"changes":[{"path":"worlds/{world_id}/factions/example.md","content":"# ..."}]}
+GOVEL_DRAFT_END -->
+
+규칙:
+1) changes 배열의 path는 반드시 worlds/{world_id}/ 내부여야 함
+2) 확장자는 .md 또는 .json만 사용
+3) 시스템 파일(.github, src, package.json, 다른 world) 절대 금지
+4) content는 승인 시 그대로 파일에 쓸 완성 본문이어야 함
+EOF
+
+          PAYLOAD_FILE=$(mktemp)
+          jq -n \
+            --arg prompt "$(cat "$PROMPT_FILE")" \
+            --arg world_id "$WORLD_ID" \
+            --arg proposal_type "$PROPOSAL_TYPE" \
+            --arg proposal_title "$PROPOSAL_TITLE" \
+            --arg proposal_content "$PROPOSAL_CONTENT" \
+            --arg context "$CONTEXT" \
+            '{
+              contents: [{
+                role: "user",
+                parts: [{
+                  text: (
+                    $prompt + "\n\n" +
+                    "world_id: " + $world_id + "\n" +
+                    "proposal_type: " + $proposal_type + "\n" +
+                    "proposal_title: " + $proposal_title + "\n" +
+                    "proposal_content:\n" + $proposal_content + "\n\n" +
+                    "world_context:\n" + $context
+                  )
+                }]
+              }],
+              generationConfig: {
+                temperature: 0.2,
+                topP: 0.9
+              }
+            }' > "$PAYLOAD_FILE"
+
+          RESPONSE_FILE=$(mktemp)
+          curl -sS -X POST \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d @"$PAYLOAD_FILE" > "$RESPONSE_FILE"
+
+          REVIEW_TEXT=$(jq -r '.candidates[0].content.parts[0].text // empty' "$RESPONSE_FILE")
+          if [ -z "$REVIEW_TEXT" ]; then
+            echo "Gemini response did not include review text"
+            exit 1
+          fi
+
+          REVIEW_FILE=$(mktemp)
+          printf "%s\n" "$REVIEW_TEXT" > "$REVIEW_FILE"
+          {
+            echo "review_file=$REVIEW_FILE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post AI review comment
+        uses: actions/github-script@v7
+        env:
+          REVIEW_FILE: ${{ steps.gemini.outputs.review_file }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const body = fs.readFileSync(process.env.REVIEW_FILE, "utf-8").trim();
+            if (!body.includes("## AI Review")) {
+              core.setFailed("AI review body is malformed.");
+              return;
+            }
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

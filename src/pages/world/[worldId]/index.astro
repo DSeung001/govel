@@ -1,0 +1,44 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { buildIssueFormUrl, getRecentChangeLines, getWorld, listWorldIds } from "../../../lib/worlds";
+
+export async function getStaticPaths() {
+  const worldIds = await listWorldIds();
+  return worldIds.map((worldId) => ({ params: { worldId } }));
+}
+
+const { worldId } = Astro.params;
+if (!worldId) {
+  throw new Error("worldId is required");
+}
+
+const world = await getWorld(worldId);
+const recentChanges = await getRecentChangeLines(worldId);
+const proposalUrl = buildIssueFormUrl(worldId);
+---
+
+<BaseLayout title={`${world.title} | Govel`}>
+  <article class="card">
+    <h2 style="margin-top:0;">{world.title}</h2>
+    <p>{world.description}</p>
+    <p class="muted">장르: {world.genre.join(" / ")}</p>
+
+    <section class="meta-list" style="margin:12px 0;">
+      <div class="meta-box"><strong>관리자</strong><br />{world.owner}</div>
+      <div class="meta-box"><strong>최근 업데이트</strong><br />{world.updatedAt}</div>
+      <div class="meta-box"><strong>핵심 설정 요약</strong><br />summary.md 기준</div>
+      <div class="meta-box"><strong>주요 문서</strong><br />index / summary / export</div>
+    </section>
+
+    <h3>최근 변경사항</h3>
+    <ul>
+      {recentChanges.length > 0 ? recentChanges.map((line) => <li>{line.replace(/^- /, "")}</li>) : <li>아직 변경 내역이 없습니다.</li>}
+    </ul>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a class="button" href={`/world/${worldId}/wiki/overview`}>세계관 읽기</a>
+      <a class="button" href={proposalUrl} target="_blank" rel="noreferrer">설정 제안하기</a>
+      <a class="button" href={`/world/${worldId}/export.md`} download={`${worldId}-export.md`}>AI용 Markdown 다운로드</a>
+    </div>
+  </article>
+</BaseLayout>

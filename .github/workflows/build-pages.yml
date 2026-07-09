@@ -29,15 +29,8 @@ jobs:
 
       - name: Install and build
         run: |
-          if [ -f package.json ]; then
-            npm ci
-            npm run build
-          else
-            echo "package.json not found — placeholder build"
-            mkdir -p dist
-            printf '%s\n' '<!DOCTYPE html>' '<html><head><title>Govel</title></head>' \
-              '<body><h1>Govel</h1><p>Static wiki build pending.</p></body></html>' > dist/index.html
-          fi
+          npm ci
+          npm run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
