@@ -28,12 +28,28 @@ async function readJson<T>(filePath: string): Promise<T> {
 }
 
 async function countMarkdownFiles(dirPath: string): Promise<number> {
-  const entries = await fs.readdir(dirPath, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return 0;
+    }
+    throw error;
+  }
   return entries.filter((entry) => entry.isFile() && entry.name.endsWith(".md")).length;
 }
 
 export async function listWorldIds(): Promise<string[]> {
-  const entries = await fs.readdir(WORLDS_ROOT, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await fs.readdir(WORLDS_ROOT, { withFileTypes: true });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
   return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
 }
 
@@ -62,12 +78,27 @@ export function getWikiSections(): WikiSection[] {
 }
 
 async function readMarkdownFile(filePath: string): Promise<string> {
-  return fs.readFile(filePath, "utf-8");
+  try {
+    return await fs.readFile(filePath, "utf-8");
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return "";
+    }
+    throw error;
+  }
 }
 
 async function aggregateCategory(worldId: string, category: (typeof CATEGORY_DIRS)[number]): Promise<string> {
   const dirPath = path.join(WORLDS_ROOT, worldId, category);
-  const entries = await fs.readdir(dirPath, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return "";
+    }
+    throw error;
+  }
   const files = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".md")).map((entry) => entry.name).sort();
   const docs = await Promise.all(
     files.map(async (fileName) => {
@@ -82,17 +113,17 @@ export async function getWikiSectionContent(worldId: string, section: WikiSectio
   const worldDir = path.join(WORLDS_ROOT, worldId);
   switch (section) {
     case "overview":
-      return readMarkdownFile(path.join(worldDir, "index.md"));
+      return (await readMarkdownFile(path.join(worldDir, "index.md"))) || "# Overview\n\n(empty)";
     case "changelog":
-      return readMarkdownFile(path.join(worldDir, "changelog.md"));
+      return (await readMarkdownFile(path.join(worldDir, "changelog.md"))) || "# Changelog\n\n(empty)";
     case "export":
-      return readMarkdownFile(path.join(worldDir, "export.md"));
+      return (await readMarkdownFile(path.join(worldDir, "export.md"))) || "# Export\n\n(empty)";
     case "characters":
     case "locations":
     case "factions":
     case "rules":
     case "events":
-      return aggregateCategory(worldId, section);
+      return (await aggregateCategory(worldId, section)) || `# ${section}\n\n(empty)`;
     default:
       return "# Not Found";
   }
@@ -100,6 +131,9 @@ export async function getWikiSectionContent(worldId: string, section: WikiSectio
 
 export async function getRecentChangeLines(worldId: string): Promise<string[]> {
   const changelog = await readMarkdownFile(path.join(WORLDS_ROOT, worldId, "changelog.md"));
+  if (!changelog) {
+    return [];
+  }
   return changelog
     .split("\n")
     .map((line) => line.trim())

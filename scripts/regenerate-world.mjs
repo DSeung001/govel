@@ -6,8 +6,15 @@ const issueNumber = process.argv[3] ?? "manual";
 if (!worldId) {
   throw new Error("Usage: node scripts/regenerate-world.mjs <worldId> [issueNumber]");
 }
+if (!/^[a-z0-9-]+$/.test(worldId)) {
+  throw new Error(`Invalid world id: ${worldId}`);
+}
 
-const worldDir = path.join(process.cwd(), "worlds", worldId);
+const worldsRoot = path.resolve(process.cwd(), "worlds");
+const worldDir = path.resolve(worldsRoot, worldId);
+if (worldDir !== path.join(worldsRoot, worldId)) {
+  throw new Error(`World path boundary check failed for id: ${worldId}`);
+}
 const worldJsonPath = path.join(worldDir, "world.json");
 const worldMeta = JSON.parse(await fs.readFile(worldJsonPath, "utf-8"));
 
@@ -15,7 +22,15 @@ const categories = ["characters", "locations", "factions", "rules", "events"];
 
 async function readCategoryDocs(category) {
   const categoryDir = path.join(worldDir, category);
-  const entries = await fs.readdir(categoryDir, { withFileTypes: true });
+  let entries = [];
+  try {
+    entries = await fs.readdir(categoryDir, { withFileTypes: true });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
   const fileNames = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".md")).map((entry) => entry.name).sort();
   const docs = [];
   for (const fileName of fileNames) {

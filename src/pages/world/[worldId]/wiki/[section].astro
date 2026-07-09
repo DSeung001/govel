@@ -17,7 +17,8 @@ if (!worldId || !section) {
 const world = await getWorld(worldId);
 const currentSection = section as WikiSection;
 const content = await getWikiSectionContent(worldId, currentSection);
-const html = marked.parse(content, { async: false });
+const parsed = marked.parse(content, { async: false });
+const html = typeof parsed === "string" ? parsed : await parsed;
 
 const navItems: { key: WikiSection; label: string }[] = [
   { key: "overview", label: "Overview" },
