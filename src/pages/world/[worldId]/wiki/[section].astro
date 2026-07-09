@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import { withBase } from "../../../../lib/paths";
 import { getWikiSectionContent, getWikiSections, getWorld, listWorldIds, type WikiSection } from "../../../../lib/worlds";
 import { marked } from "marked";
 
@@ -38,14 +39,14 @@ const navItems: { key: WikiSection; label: string }[] = [
       <ul>
         {navItems.map((item) => (
           <li>
-            <a href={`/world/${worldId}/wiki/${item.key}`} aria-current={item.key === currentSection ? "page" : undefined}>
+            <a href={withBase(`world/${worldId}/wiki/${item.key}`)} aria-current={item.key === currentSection ? "page" : undefined}>
               {item.label}
             </a>
           </li>
         ))}
       </ul>
       <div style="margin-top:10px;">
-        <a class="button" href={`/world/${worldId}`}>상세 홈</a>
+        <a class="button" href={withBase(`world/${worldId}`)}>상세 홈</a>
       </div>
     </aside>
 

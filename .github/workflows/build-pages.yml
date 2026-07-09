@@ -28,6 +28,9 @@ jobs:
           node-version: "24"
 
       - name: Install and build
+        env:
+          PUBLIC_GOVEL_REPO: ${{ github.repository }}
+          PUBLIC_SITE_URL: https://dseung001.github.io
         run: |
           npm ci
           npm run build

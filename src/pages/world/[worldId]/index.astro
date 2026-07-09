@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { withBase } from "../../../lib/paths";
 import { buildIssueFormUrl, getRecentChangeLines, getWorld, listWorldIds } from "../../../lib/worlds";
 
 export async function getStaticPaths() {
@@ -36,9 +37,9 @@ const proposalUrl = buildIssueFormUrl(worldId);
     </ul>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <a class="button" href={`/world/${worldId}/wiki/overview`}>세계관 읽기</a>
+      <a class="button" href={withBase(`world/${worldId}/wiki/overview`)}>세계관 읽기</a>
       <a class="button" href={proposalUrl} target="_blank" rel="noreferrer">설정 제안하기</a>
-      <a class="button" href={`/world/${worldId}/export.md`} download={`${worldId}-export.md`}>AI용 Markdown 다운로드</a>
+      <a class="button" href={withBase(`world/${worldId}/export.md`)} download={`${worldId}-export.md`}>AI용 Markdown 다운로드</a>
     </div>
   </article>
 </BaseLayout>

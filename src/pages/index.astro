@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { withBase } from "../lib/paths";
 import { listWorlds } from "../lib/worlds";
 
 const worlds = await listWorlds();
@@ -21,7 +22,7 @@ const worlds = await listWorlds();
           Characters {world.counts.characters} · Locations {world.counts.locations} · Factions {world.counts.factions} · Rules {world.counts.rules}
         </p>
         <p class="muted" style="margin:6px 0;">최근 업데이트: {world.updatedAt}</p>
-        <a class="button" href={`/world/${world.id}`}>세계관 보기</a>
+        <a class="button" href={withBase(`world/${world.id}`)}>세계관 보기</a>
       </article>
     ))}
   </section>

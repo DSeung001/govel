@@ -163,8 +163,9 @@ EOF
 
           RESPONSE_FILE=$(mktemp)
           curl -sS -X POST \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent" \
             -H "Content-Type: application/json" \
+            -H "x-goog-api-key: ${GEMINI_API_KEY}" \
             -d @"$PAYLOAD_FILE" > "$RESPONSE_FILE"
 
           REVIEW_TEXT=$(jq -r '.candidates[0].content.parts[0].text // empty' "$RESPONSE_FILE")
