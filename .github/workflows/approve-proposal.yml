@@ -9,6 +9,7 @@ jobs:
   handle:
     if: |
       github.event.issue.pull_request == null &&
+      contains(github.event.issue.labels.*.name, 'lore-proposal') &&
       (contains(github.event.comment.body, '/approve') ||
        contains(github.event.comment.body, '/reject'))
     runs-on: ubuntu-latest
@@ -20,67 +21,193 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect command
+      - name: Parse command and world
         id: cmd
-        run: |
-          BODY="${{ github.event.comment.body }}"
-          if echo "$BODY" | grep -q '/approve'; then
-            echo "command=approve" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -q '/reject'; then
-            echo "command=reject" >> "$GITHUB_OUTPUT"
-          else
-            echo "Unknown command"
-            exit 1
-          fi
-
-      - name: Resolve world id
-        id: world
-        run: |
-          # TODO: parse World field from linked lore-proposal issue body
-          echo "world_id=unknown" >> "$GITHUB_OUTPUT"
-
-      - name: Verify owner
-        run: |
-          WORLD_ID="${{ steps.world.outputs.world_id }}"
-          OWNER=$(jq -r '.owner' "worlds/${WORLD_ID}/world.json")
-          COMMENTER="${{ github.event.comment.user.login }}"
-          if [ "$COMMENTER" != "$OWNER" ]; then
-            echo "Approver $COMMENTER does not match world owner $OWNER"
-            exit 1
-          fi
-
-      - name: Verify file paths
-        if: steps.cmd.outputs.command == 'approve'
-        run: |
-          # TODO: validate all target paths are inside worlds/{world_id}/
-          # Reject .github/, src/, package.json, other worlds
-          echo "Path validation placeholder"
-
-      - name: Apply approved changes
-        if: steps.cmd.outputs.command == 'approve'
-        run: |
-          # TODO: create/update Markdown files from AI review draft
-          # Regenerate summary.md, export.md, changelog.md
-          echo "Apply changes placeholder"
-
-      - name: Comment result
         uses: actions/github-script@v7
         with:
           script: |
-            const command = "${{ steps.cmd.outputs.command }}";
-            const message = command === "approve"
-              ? "Proposal approved. Lore update pending full implementation."
-              : "Proposal rejected.";
+            const body = context.payload.comment.body ?? "";
+            const firstToken = body.trim().split(/\s+/)[0];
+            if (firstToken !== "/approve" && firstToken !== "/reject") {
+              core.setFailed("First token must be /approve or /reject");
+              return;
+            }
+            const issueBody = context.payload.issue.body ?? "";
+            const match = issueBody.match(/###\s*World\s*\n([^\n]+)/i);
+            if (!match) {
+              core.setFailed("World field not found in issue body.");
+              return;
+            }
+            const worldId = match[1].trim().split(/\s+/)[0];
+            core.setOutput("command", firstToken.slice(1));
+            core.setOutput("world_id", worldId);
 
+      - name: Verify owner
+        id: owner
+        uses: actions/github-script@v7
+        env:
+          WORLD_ID: ${{ steps.cmd.outputs.world_id }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const worldPath = path.join(process.cwd(), "worlds", process.env.WORLD_ID, "world.json");
+            if (!fs.existsSync(worldPath)) {
+              core.setFailed(`World not found: ${worldPath}`);
+              return;
+            }
+            const meta = JSON.parse(fs.readFileSync(worldPath, "utf-8"));
+            const commenter = context.payload.comment.user.login;
+            if (meta.owner !== commenter) {
+              core.setFailed(`Approver ${commenter} does not match world owner ${meta.owner}`);
+              return;
+            }
+            core.setOutput("owner", meta.owner);
+
+      - name: Handle reject
+        if: steps.cmd.outputs.command == 'reject'
+        uses: actions/github-script@v7
+        with:
+          script: |
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: message,
+              body: "Proposal rejected by world owner. No world files were modified.",
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: "closed",
+            });
+
+      - name: Extract and apply AI draft
+        if: steps.cmd.outputs.command == 'approve'
+        uses: actions/github-script@v7
+        env:
+          WORLD_ID: ${{ steps.cmd.outputs.world_id }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = require("node:path");
+
+            const worldId = process.env.WORLD_ID;
+            const issueNumber = context.issue.number;
+            const issueComments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              per_page: 100,
+            });
+
+            const aiComment = [...issueComments]
+              .reverse()
+              .find((comment) => typeof comment.body === "string" && comment.body.includes("GOVEL_DRAFT_START"));
+            if (!aiComment) {
+              core.setFailed("No AI draft comment found. Approval cannot proceed.");
+              return;
+            }
+
+            const marker = aiComment.body.match(/<!--\s*GOVEL_DRAFT_START\s*([\s\S]*?)\s*GOVEL_DRAFT_END\s*-->/);
+            if (!marker) {
+              core.setFailed("AI draft marker block is malformed.");
+              return;
+            }
+
+            let draft;
+            try {
+              draft = JSON.parse(marker[1]);
+            } catch (error) {
+              core.setFailed(`AI draft JSON parse failed: ${error.message}`);
+              return;
+            }
+
+            if (!Array.isArray(draft.changes) || draft.changes.length === 0) {
+              core.setFailed("AI draft has no changes.");
+              return;
+            }
+
+            const forbiddenPrefixes = [".github/", "src/", "public/"];
+            const allowedPrefix = `worlds/${worldId}/`;
+            const allowedExtensions = new Set([".md", ".json"]);
+            const changedPaths = [];
+
+            for (const change of draft.changes) {
+              if (!change || typeof change.path !== "string" || typeof change.content !== "string") {
+                core.setFailed("Each change must include string path and string content.");
+                return;
+              }
+              const targetPath = change.path.trim();
+              if (!targetPath.startsWith(allowedPrefix)) {
+                core.setFailed(`Rejected path outside world boundary: ${targetPath}`);
+                return;
+              }
+              if (forbiddenPrefixes.some((prefix) => targetPath.startsWith(prefix))) {
+                core.setFailed(`Rejected forbidden path: ${targetPath}`);
+                return;
+              }
+              if (targetPath.includes("..")) {
+                core.setFailed(`Rejected path traversal: ${targetPath}`);
+                return;
+              }
+              if (targetPath === "package.json") {
+                core.setFailed("package.json cannot be modified by approval workflow.");
+                return;
+              }
+
+              const ext = path.extname(targetPath);
+              if (!allowedExtensions.has(ext)) {
+                core.setFailed(`Rejected extension ${ext} for ${targetPath}`);
+                return;
+              }
+
+              const absolutePath = path.join(process.cwd(), targetPath);
+              fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+              fs.writeFileSync(absolutePath, `${change.content.replace(/\s+$/, "")}\n`, "utf-8");
+              changedPaths.push(targetPath);
+            }
+
+            core.setOutput("changed_paths", changedPaths.join(","));
+
+      - name: Regenerate summary and export
+        if: steps.cmd.outputs.command == 'approve'
+        run: |
+          node scripts/regenerate-world.mjs "${{ steps.cmd.outputs.world_id }}" "${{ github.event.issue.number }}"
+
+      - name: Commit approved world update
+        if: steps.cmd.outputs.command == 'approve'
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "worlds/${{ steps.cmd.outputs.world_id }}"
+          if git diff --cached --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "Apply approved lore proposal #${{ github.event.issue.number }}"
+          git push
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+      - name: Comment approve result
+        if: steps.cmd.outputs.command == 'approve'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const hasChanges = "${{ steps.commit.outputs.has_changes }}" === "true";
+            const body = hasChanges
+              ? "Proposal approved and canonical world files were updated."
+              : "Proposal approved but no canonical file changes were detected.";
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
             });
 
       - name: Close issue
-        if: success()
+        if: steps.cmd.outputs.command == 'approve' && success()
         uses: actions/github-script@v7
         with:
           script: |

@@ -1,0 +1,28 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { listWorlds } from "../lib/worlds";
+
+const worlds = await listWorlds();
+---
+
+<BaseLayout title="Govel">
+  <section class="card" style="margin-bottom:12px;">
+    <h2 style="margin:0 0 8px;">세계관 목록</h2>
+    <p class="muted" style="margin:0;">AI 세계관을 Markdown 위키로 읽고, GitHub Issue로 설정을 제안합니다.</p>
+  </section>
+
+  <section class="cards">
+    {worlds.map((world) => (
+      <article class="card">
+        <h3 style="margin-top:0;">{world.title}</h3>
+        <p>{world.description}</p>
+        <p class="muted" style="margin:6px 0;">{world.genre.join(" / ")}</p>
+        <p class="muted" style="margin:6px 0;">
+          Characters {world.counts.characters} · Locations {world.counts.locations} · Factions {world.counts.factions} · Rules {world.counts.rules}
+        </p>
+        <p class="muted" style="margin:6px 0;">최근 업데이트: {world.updatedAt}</p>
+        <a class="button" href={`/world/${world.id}`}>세계관 보기</a>
+      </article>
+    ))}
+  </section>
+</BaseLayout>

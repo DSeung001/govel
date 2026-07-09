@@ -1,0 +1,55 @@
+---
+import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import { getWikiSectionContent, getWikiSections, getWorld, listWorldIds, type WikiSection } from "../../../../lib/worlds";
+import { marked } from "marked";
+
+export async function getStaticPaths() {
+  const worldIds = await listWorldIds();
+  const sections = getWikiSections();
+  return worldIds.flatMap((worldId) => sections.map((section) => ({ params: { worldId, section } })));
+}
+
+const { worldId, section } = Astro.params;
+if (!worldId || !section) {
+  throw new Error("worldId and section are required");
+}
+
+const world = await getWorld(worldId);
+const currentSection = section as WikiSection;
+const content = await getWikiSectionContent(worldId, currentSection);
+const html = marked.parse(content, { async: false });
+
+const navItems: { key: WikiSection; label: string }[] = [
+  { key: "overview", label: "Overview" },
+  { key: "characters", label: "Characters" },
+  { key: "locations", label: "Locations" },
+  { key: "factions", label: "Factions" },
+  { key: "rules", label: "Rules" },
+  { key: "events", label: "Events" },
+  { key: "changelog", label: "Changelog" },
+  { key: "export", label: "Export" },
+];
+---
+
+<BaseLayout title={`${world.title} Wiki | Govel`}>
+  <div class="layout-grid">
+    <aside class="sidebar">
+      <ul>
+        {navItems.map((item) => (
+          <li>
+            <a href={`/world/${worldId}/wiki/${item.key}`} aria-current={item.key === currentSection ? "page" : undefined}>
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <div style="margin-top:10px;">
+        <a class="button" href={`/world/${worldId}`}>상세 홈</a>
+      </div>
+    </aside>
+
+    <article class="content">
+      <div set:html={html} />
+    </article>
+  </div>
+</BaseLayout>
