@@ -1,0 +1,79 @@
+name: AI Review
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  review:
+    if: contains(github.event.issue.labels.*.name, 'lore-proposal')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse issue body
+        id: parse
+        run: |
+          # TODO: extract World, Type, Proposal Title, Proposal Content from issue form body
+          echo "world_id=unknown" >> "$GITHUB_OUTPUT"
+          echo "proposal_type=Other" >> "$GITHUB_OUTPUT"
+
+      - name: Load world context
+        run: |
+          WORLD_ID="${{ steps.parse.outputs.world_id }}"
+          if [ -f "worlds/${WORLD_ID}/world.json" ]; then
+            cat "worlds/${WORLD_ID}/world.json"
+          else
+            echo "World not found: worlds/${WORLD_ID}/"
+            exit 1
+          fi
+
+      - name: Call AI provider
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          # TODO: call AI API — classify, summarize, conflict check, list target files
+          # See .github/instructions/github-workflow.instructions.md §8.5
+          if [ -z "$AI_API_KEY" ]; then
+            echo "AI_API_KEY secret not configured"
+            exit 1
+          fi
+          echo "AI review placeholder — implement provider call"
+
+      - name: Post AI review comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              "## AI Review",
+              "",
+              "분류: (pending)",
+              "",
+              "이름: (pending)",
+              "",
+              "요약:",
+              "(pending)",
+              "",
+              "충돌 검사:",
+              "(pending)",
+              "",
+              "변경 예정 파일:",
+              "- (pending)",
+              "",
+              "관리자 명령:",
+              "- /approve",
+              "- /reject",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

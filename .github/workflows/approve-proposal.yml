@@ -1,0 +1,92 @@
+name: Approve Proposal
+
+on:
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  handle:
+    if: |
+      github.event.issue.pull_request == null &&
+      (contains(github.event.comment.body, '/approve') ||
+       contains(github.event.comment.body, '/reject'))
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect command
+        id: cmd
+        run: |
+          BODY="${{ github.event.comment.body }}"
+          if echo "$BODY" | grep -q '/approve'; then
+            echo "command=approve" >> "$GITHUB_OUTPUT"
+          elif echo "$BODY" | grep -q '/reject'; then
+            echo "command=reject" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unknown command"
+            exit 1
+          fi
+
+      - name: Resolve world id
+        id: world
+        run: |
+          # TODO: parse World field from linked lore-proposal issue body
+          echo "world_id=unknown" >> "$GITHUB_OUTPUT"
+
+      - name: Verify owner
+        run: |
+          WORLD_ID="${{ steps.world.outputs.world_id }}"
+          OWNER=$(jq -r '.owner' "worlds/${WORLD_ID}/world.json")
+          COMMENTER="${{ github.event.comment.user.login }}"
+          if [ "$COMMENTER" != "$OWNER" ]; then
+            echo "Approver $COMMENTER does not match world owner $OWNER"
+            exit 1
+          fi
+
+      - name: Verify file paths
+        if: steps.cmd.outputs.command == 'approve'
+        run: |
+          # TODO: validate all target paths are inside worlds/{world_id}/
+          # Reject .github/, src/, package.json, other worlds
+          echo "Path validation placeholder"
+
+      - name: Apply approved changes
+        if: steps.cmd.outputs.command == 'approve'
+        run: |
+          # TODO: create/update Markdown files from AI review draft
+          # Regenerate summary.md, export.md, changelog.md
+          echo "Apply changes placeholder"
+
+      - name: Comment result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const command = "${{ steps.cmd.outputs.command }}";
+            const message = command === "approve"
+              ? "Proposal approved. Lore update pending full implementation."
+              : "Proposal rejected.";
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message,
+            });
+
+      - name: Close issue
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: "closed",
+            });

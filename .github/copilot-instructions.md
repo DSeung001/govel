@@ -1,0 +1,51 @@
+# Govel Copilot Instructions
+
+## Product
+
+Govel is a minimal GitHub-native worldbuilding platform.
+
+The MVP goal is:
+
+World → Proposal → AI Review → Approve → Markdown Update → Publish
+
+Do not expand scope beyond the MVP.
+
+## Core Rules
+
+- Keep the UI minimal, grayscale, and notepad-like.
+- Markdown files are the canonical world database.
+- GitHub Issues are used for lore proposals.
+- GitHub Discussions are not part of MVP.
+- Do not add authentication beyond GitHub-based issue workflows.
+- Do not add Notion import, Obsidian import, comments, relationship graphs, timelines, or novel generation.
+- Do not introduce a database unless explicitly requested.
+- Prefer simple file-based logic.
+- Prefer small functions and explicit file paths.
+- Avoid over-engineering.
+
+## Architecture
+
+- Store worlds under `worlds/{world_id}/`.
+- Each world has `world.json`, `index.md`, `summary.md`, `export.md`, and `changelog.md`.
+- Render Markdown as the public wiki.
+- Use GitHub Issue Forms for lore proposals.
+- Use GitHub Actions for AI review and approval handling.
+- `/approve` is the only MVP approval command.
+- `/reject` is the only MVP rejection command.
+
+## Safety Rules
+
+- Never allow automated updates outside `worlds/{world_id}/`.
+- Never modify `.github/`, `src/`, `package.json`, or files from other worlds during approval.
+- Validate that the approver matches `world.json.owner`.
+- Do not store user API keys in frontend code.
+- Use GitHub Secrets for AI provider keys.
+
+## UI Rules
+
+- Use grayscale only.
+- No complex animations.
+- No heavy dashboard UI.
+- Use plain document layout.
+- Prioritize readability over decoration.
+- Buttons should be simple rectangular controls.

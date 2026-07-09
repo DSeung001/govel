@@ -1,0 +1,57 @@
+name: Lore Proposal
+description: Propose new lore for a Govel world
+title: "[Lore] "
+labels:
+  - lore-proposal
+body:
+  - type: input
+    id: world
+    attributes:
+      label: World
+      description: World ID (e.g. black-sun)
+      placeholder: black-sun
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Character
+        - Location
+        - Faction
+        - Rule
+        - Event
+        - Item
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: proposal_title
+    attributes:
+      label: Proposal Title
+      description: Short title for this lore proposal
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal_content
+    attributes:
+      label: Proposal Content
+      description: Full lore proposal text
+    validations:
+      required: true
+
+  - type: textarea
+    id: related_lore
+    attributes:
+      label: Related Existing Lore
+      description: Names or links to related world entries (optional)
+
+  - type: textarea
+    id: additional_notes
+    attributes:
+      label: Additional Notes
+      description: Extra context for reviewers (optional)
